@@ -1,0 +1,12 @@
+.cs142-topbar-appBar {
+  height: 60;
+  justify-content: 'center';
+  background-color: #8c1515 !important
+}
+
+
+.container{
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}

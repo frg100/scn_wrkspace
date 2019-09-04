@@ -1,0 +1,22 @@
+.create-concert-container{
+    display: flex;
+    flex-direction: column;
+    padding: 0 4rem;
+    max-width: 600px;
+}
+
+.flex-row{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.flex-col{
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.active-button{
+    background-color: #8c1515;
+}

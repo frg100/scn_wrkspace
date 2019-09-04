@@ -1,0 +1,29 @@
+.login-container{
+    display: flex;
+    flex-direction: column;
+    padding: 12rem;
+    max-width: 200px;
+}
+
+.register-container{
+    display: flex;
+    flex-direction: column;
+    padding: 0 12rem;
+    max-width: 400px;
+}
+
+.flex-row{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.flex-col{
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.active-button{
+    background-color: #8c1515;
+}
