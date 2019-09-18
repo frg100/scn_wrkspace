@@ -11,12 +11,15 @@ import Cookies from 'js-cookie';
 
 // import necessary components
 import TopBar from './components/topBar/TopBar';
+import Sidebar from './components/sidebar/Sidebar';
+
 import LoginRegister from './components/loginRegister/LoginRegister';
 import ConcertsPage from './components/concertsPage/ConcertsPage';
 import CreateConcertPage from './components/createConcertPage/CreateConcertPage';
 import FinancialRequestsPage from './components/financialRequestsPage/FinancialRequestsPage';
 import SingleConcertPage from './components/singleConcertPage/SingleConcertPage';
-import Sidebar from './components/sidebar/Sidebar';
+import HomePage from './components/homePage/HomePage';
+
 
 class Wrkspace extends React.Component {
   constructor(props) {
@@ -66,6 +69,7 @@ class Wrkspace extends React.Component {
                 <Route path="/create-concert" render={ props => <CreateConcertPage {...props} loggedIn={this.state.loggedIn}  user_id={this.state.user_id} />} />
                 <Route path="/concerts" render={ props => <ConcertsPage {...props} loggedIn={this.state.loggedIn}  user_id={this.state.user_id} />} />
                 <Route path="/financial-requests" render={ props => <FinancialRequestsPage {...props} loggedIn={this.state.loggedIn}  user_id={this.state.user_id} />} />
+                <Route path="/home" render={ props => <HomePage {...props} loggedIn={this.state.loggedIn}  user_id={this.state.user_id} />} />
               </Switch>
             </Paper>
           </Grid>

@@ -1,1 +1,4 @@
 runtime: nodejs8
+
+env_variables:
+  GCLOUD_STORAGE_BUCKET: wrkspace_file_bucket
