@@ -125,7 +125,6 @@ const get_user_by_property = async (property_name, property_value) => {
   return first_user
 }
 
-
 const create_concert = async (type, viewable_by, name, date, venue, cosponsors, owners, artists, guarantee) => {
   const concert_id = hash_string(name + type)
   console.log('Concert id just created: ', concert_id)
@@ -280,6 +279,25 @@ user
 
 Provides a way to access/edit User entities
 */
+app.get('/user/all', async function(request, response){
+  if (!request.session.logged_in){
+    response.status(401).send('Not logged in!');
+    return;
+  }
+
+  const query = datastore.createQuery('User')
+  let users;
+  try{
+    users = await datastore.runQuery(query);
+  } catch (error) {
+    console.error('ERROR IN DATABASE CALL WHEN GETTING ALL USERS:', error);
+    response.status(400).send(JSON.stringify(error));
+    return;
+  }
+
+  console.log(`Retrieved ${users.length} users `)
+  response.end(JSON.stringify(users));
+});
 
 app.get('/user/:id', async function(request, response){
   if (!request.session.logged_in){

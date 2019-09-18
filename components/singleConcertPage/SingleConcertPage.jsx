@@ -3,7 +3,9 @@ import { Redirect } from 'react-router-dom';
 import {
   Typography,
   Button,
-  MenuItem
+  MenuItem,
+  Avatar,
+  Grid
 } from '@material-ui/core';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
@@ -22,7 +24,8 @@ class SingleConcertPage extends React.Component {
     this.state = {
       editing: false,
       concert_id: this.props.match.params.concert_id,
-      concert: {}
+      concert: {},
+      users: []
     }
 
     this.inputHandler = (type) => (event) => {
@@ -31,10 +34,55 @@ class SingleConcertPage extends React.Component {
       this.setState({ concert });
     }
 
+    this.add_user = (type) => (event) => {
+      const user = event.target.value
+      var concert = {...this.state.concert}
+      if (type === 'new_owner'){
+        if (!concert.owners.includes(user)){
+          concert.owners.push(user);
+        }
+      } else if (type === 'new_visibility'){
+        if (!concert.viewable_by.includes(user)){
+          concert.viewable_by.push(user);
+        }
+      }
+      this.setState({ concert });
+    }
+
+    this.remove_owner = (id) => (event) => {
+      if (!this.state.editing) {return}
+      var concert = {...this.state.concert}
+      concert.owners = concert.owners.filter(item => item !== id)
+      this.setState({ concert });
+    }
+
+    this.remove_viewable_by = (id) => (event) => {
+      if (!this.state.editing) {return}
+      var concert = {...this.state.concert}
+      concert.viewable_by = concert.viewable_by.filter(item => item !== id)
+      this.setState({ concert });
+    }
+
     this.get_concert({});
+    this.get_users({});
 
     this.validate_input_length = this.validate_input_length.bind(this);
     this.attempt_save_changes = this.attempt_save_changes.bind(this);
+  }
+
+  get_users(prevState){
+    axios.get('/user/all')
+      .then((val) => {
+        const users = val.data[0]
+        if (((!prevState.users || !prevState.users[0]) && users[0]) || prevState.users[0].user_id !== users[0].user_id){
+          this.setState({ users });
+        }
+      }).catch((err) => {
+          if (err.status && err.response.status === 401){
+            console.log('Not logged in!')
+          }
+          console.log('Error getting users: ', err);
+      });
   }
 
   get_concert(prevState){
@@ -43,10 +91,9 @@ class SingleConcertPage extends React.Component {
         .then((val) => {
           const concert = val.data;
           // Turn array fields back to strings
-          concert.viewable_by = concert.viewable_by.join(',')
           concert.artists = concert.artists.join(',')
-          concert.owners = concert.owners.join(',')
           concert.cosponsors = concert.cosponsors.join(',')
+          concert.date = concert.date.toString().substring(0, "YYYY-MM-DD".length)
           // Set the new state
           if (concert && !prevState.concert || !prevState){
             this.setState({ concert });         
@@ -65,18 +112,19 @@ class SingleConcertPage extends React.Component {
 
   componentDidUpdate(prevProps, prevState){
     this.get_concert(prevState);
+    this.get_users(prevState);
   }
 
   attempt_save_changes(){
     if (!this.validate_input_length()) {
       axios.post("/concert", { 
         type: this.state.concert.type, 
-        viewable_by: this.state.concert.viewable_by.split(','), 
+        viewable_by: this.state.concert.viewable_by,
         name: this.state.concert.name, 
         date: new Date(this.state.concert.date), 
         venue: this.state.concert.venue, 
         cosponsors: this.state.concert.cosponsors.split(','), 
-        owners: this.state.concert.owners.split(','), 
+        owners: this.state.concert.owners, 
         artists: this.state.concert.artists.split(','), 
         guarantee: this.state.concert.guarantee,
         concert_id: this.state.concert.concert_id,
@@ -108,7 +156,54 @@ class SingleConcertPage extends React.Component {
   render() {
     if (!this.props.loggedIn) { return <Redirect to="/login-register" /> }
 
-    if (!this.state.concert || !this.state.concert.name) { return <div>{"No concert here!"}</div> }
+    if (!this.state.concert || !this.state.concert.name || this.state.users.length === 0) { return <div>{"No concert here!"}</div> }
+
+    const user_input_dropdowns = (
+      <div className="flex-row">
+        <TextField
+          id="owners-create-concert"
+          label="add owner"
+          select
+          value="Select User"
+          onChange={this.add_user('new_owner')}
+          margin="normal"
+          variant="outlined"
+          InputProps={{
+            readOnly: !this.state.editing,
+          }}
+        >
+        {this.state.users.map(user => (
+            <MenuItem key={`owners-${user.login_name}`} value={user.user_id}>
+              {`${user.first_name} ${user.last_name}`}
+            </MenuItem>
+        ))}
+        </TextField>
+        <TextField
+          id="viewable_by-create-concert"
+          label="viewable by"
+          select
+          value="Select User"
+          onChange={this.add_user('viewable_by')}
+          margin="normal"
+          variant="outlined"
+          InputProps={{
+            readOnly: !this.state.editing,
+          }}
+        >
+        {this.state.users.map(user => (
+            <MenuItem key={`owners-${user.login_name}`} value={user.user_id}>
+              {`${user.first_name} ${user.last_name}`}
+            </MenuItem>
+        ))}
+        </TextField>
+      </div>
+    )
+
+    const remove_users_prompt = (
+      <Typography color="inherit">
+        Click to remove users
+      </Typography>
+    )
 
     return (
       <div className="single-concert-container">
@@ -144,21 +239,21 @@ class SingleConcertPage extends React.Component {
                 readOnly: !this.state.editing,
               }}
             >
-            <MenuItem key='stanford-live' value='Stanford Live'>
-              Stanford Live
-            </MenuItem>
-            <MenuItem key='producer-show' value='Producer Show'>
-              Producer Show
-            </MenuItem>
-            <MenuItem key='special-show' value='Special Show'>
-              Special Show
-            </MenuItem>
-            <MenuItem key='cosponsorship' value='Cosponsorship Show'>
-              Cosponsorship Show
-            </MenuItem>
-            <MenuItem key='miscellaneous-show' value='Miscellaneous Show'>
-              Miscellaneous Show
-            </MenuItem>
+              <MenuItem key='stanford-live' value='Stanford Live'>
+                Stanford Live
+              </MenuItem>
+              <MenuItem key='producer-show' value='Producer Show'>
+                Producer Show
+              </MenuItem>
+              <MenuItem key='special-show' value='Special Show'>
+                Special Show
+              </MenuItem>
+              <MenuItem key='cosponsorship' value='Cosponsorship Show'>
+                Cosponsorship Show
+              </MenuItem>
+              <MenuItem key='miscellaneous-show' value='Miscellaneous Show'>
+                Miscellaneous Show
+              </MenuItem>
             </TextField>
           </div>
           <div className="flex-row">
@@ -201,32 +296,40 @@ class SingleConcertPage extends React.Component {
               }}
             />
           </div>
-          {this.state.editing ? 'Please input cosponsors list in comma-separated format (Eg. "Stanford Live, TDX"' : ""}
           <div className="flex-row">
-            <TextField
-              id="owners-create-concert"
-              label="owners"
-              value={this.state.concert.owners}
-              onChange={this.inputHandler('owners')}
-              margin="normal"
-              variant="outlined"
-              InputProps={{
-                readOnly: !this.state.editing,
-              }}
-            />
-            <TextField
-              id="viewable_by-create-concert"
-              label="viewable by"
-              value={this.state.concert.viewable_by}
-              onChange={this.inputHandler('viewable_by')}
-              margin="normal"
-              variant="outlined"
-              InputProps={{
-                readOnly: !this.state.editing,
-              }}
-            />
+            <Typography color="inherit">
+              Concert owners
+            </Typography>
+            <Typography color="inherit">
+              Concert is viewable by
+            </Typography>
           </div>
-          {this.state.editing ? 'Please input permissions lists in comma-separated format (Eg. "Federico Reyes, Bella Cooper"' : ''}
+          <div className="flex-row">
+            <Grid key="owners-grid" container justify="flex-start" alignItems="center">
+              {this.state.concert.owners && this.state.concert.owners.map((owner_id) => {
+                  // For each owner (given the user id, get the name and display as an avatar)
+                  owner_id = owner_id.trim()
+                  const owner_dict = this.state.users.filter(user => user.user_id == owner_id)[0];
+                  return (<Avatar key={owner_dict.user_id} className="user-avatar" onClick={this.remove_owner(owner_dict.user_id)}>
+                            {`${owner_dict.first_name.charAt(0)} ${owner_dict.last_name.charAt(0)}`}
+                          </Avatar>)
+                })
+              }
+            </Grid>
+            <Grid key="viewable_by-grid" container justify="flex-end" alignItems="center">
+              {this.state.concert.viewable_by && this.state.concert.viewable_by.map((viewable_by_id) => {
+                  // For each owner (given the user id, get the name and display as an avatar)
+                  viewable_by_id = viewable_by_id.trim()
+                  const viewable_by_dict = this.state.users.filter(user => user.user_id == viewable_by_id)[0];
+                  return (<Avatar key={viewable_by_dict.user_id} className="user-avatar" onClick={this.remove_viewable_by(viewable_by_dict.user_id)}>
+                            {`${viewable_by_dict.first_name.charAt(0)} ${viewable_by_dict.last_name.charAt(0)}`}
+                          </Avatar>)
+                })
+              }
+            </Grid>
+          </div>
+          {this.state.editing && user_input_dropdowns}
+          {this.state.editing && remove_users_prompt}
           <div className="flex-row">
             <TextField
               id="artists-create-concert"
