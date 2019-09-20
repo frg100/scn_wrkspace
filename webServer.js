@@ -35,11 +35,11 @@ var async = require('async');
 var fs = require("fs");
 
 var cookieSession = require('cookie-session');
+const { format } = require('util');
 var session = require('express-session');
 var bodyParser = require('body-parser');
 var Multer = require('multer');
 const crypto = require('crypto');
-var processFormBody = multer({storage: multer.memoryStorage()}).single('uploadedfile');
 
 /******************************** Google Cloud configs ********************************/
 // By default, the client will authenticate using the service account file
@@ -74,6 +74,7 @@ const multer = Multer({
 });
 
 // A bucket is a container for objects (files).
+// Name should be "GCLOUD_STORAGE_BUCKET=wkrspace_file_bucket"
 const bucket = storage.bucket(process.env.GCLOUD_STORAGE_BUCKET);
 
 /******************************** Google Cloud configs ********************************/
@@ -439,10 +440,13 @@ app.get('/concert/:id', async function(request, response){
 // Uploads a file to the Google Cloud Datastore Bucket
 // Process the file upload and upload to Google Cloud Storage.
 app.post('/upload', multer.single('file'), (req, res, next) => {
+
   if (!req.file) {
     res.status(400).send('No file uploaded.');
     return;
   }
+
+  console.log('Uploading file', req.file.originalname);
 
   // Create a new blob in the bucket and upload the file data.
   const blob = bucket.file(req.file.originalname);

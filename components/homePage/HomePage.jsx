@@ -21,12 +21,24 @@ class HomePage extends React.Component {
     //this function is called when user presses the update button
     this.get_user({});
 
-    this.handleSave = (file) => {
+    this.handleSave = (files) => {
         //Saving files to state for further use and closing Modal.
-        console.log('file in handleSave:', file.name)
-        var user = {...this.state.user}
-        user.profile_image_url = file.name
-        this.setState({ user, file: file, dropzone_open: false });
+        const domForm = new FormData();
+        domForm.append('file', files[0]);
+
+
+        axios.post("/upload", domForm)
+          .then((val) => {
+            const public_filename = val.data
+            console.log('Uploaded', public_filename);
+            var user = {...this.state.user}
+            user.profile_image_url = public_filename
+            this.setState({ user, dropzone_open: false });
+          })
+          .catch((err) => {
+            console.log(err, err.message);
+            alert("Error with file upload...please try again later!");
+          });
     }
   }
 

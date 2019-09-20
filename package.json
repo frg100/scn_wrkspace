@@ -7,14 +7,14 @@
     "build": "node_modules/.bin/webpack -d",
     "build:w": "node_modules/.bin/webpack -d --watch",
     "lint": "node_modules/.bin/eslint webServer.js  *.jsx components/*/*.jsx lib/*.js",
-    "server": "nodemon webServer.js & node_modules/.bin/webpack -d --watch",
+    "server": "export GCLOUD_STORAGE_BUCKET=wkrspace; nodemon webServer.js & node_modules/.bin/webpack -d --watch",
     "start": "node webServer.js"
   },
   "author": "Federico Reyes <frg100@cs.stanford.edu> 2019",
   "license": "ISC",
   "dependencies": {
     "@google-cloud/datastore": "^4.2.0",
-    "@google-cloud/storage": "^3.0.0",
+    "@google-cloud/storage": "^3.3.0",
     "@material-ui/core": "^3.9.3",
     "@material-ui/icons": "^3.0.2",
     "async": "^2.6.0",
@@ -36,7 +36,8 @@
     "react-dom": "^16.5.2",
     "react-router": "^4.3.1",
     "react-router-dom": "^4.3.1",
-    "url-loader": "^1.1.2"
+    "url-loader": "^1.1.2",
+    "util": "^0.12.1"
   },
   "devDependencies": {
     "babel-core": "^6.26.0",
