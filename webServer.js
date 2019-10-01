@@ -151,6 +151,38 @@ const get_user_by_property = async (property_name, property_value) => {
   return first_user
 }
 
+const update_user = async (login_name, hashed_password, first_name, last_name, position, profile_image_url, user_id) => {
+  console.log('Updating user: ', user_id)
+  const user_key = datastore.key(['User', user_id]);
+
+  const user = {
+    'user_id': user_id,
+    'login_name': login_name,
+    'password': hashed_password,
+    'first_name': first_name,
+    'last_name': last_name,
+    'position': position,
+    'profile_image_url': profile_image_url
+  }
+
+  const entity = {
+    key: user_key,
+    data: user,
+  };
+
+
+  // Attempt to insert the user into the databse
+  let res;
+  try {
+    res = await datastore.upsert(entity)
+    console.log(`Saved user ${user_id}`);
+    return user_id
+  } catch (error) {
+    console.error('ERROR SAVING USER:', error);
+    return "ERROR"
+  }
+};
+
 const create_concert = async (type, viewable_by, name, date, venue, cosponsors, owners, artists, guarantee) => {
   const concert_id = hash_string(name + type)
   console.log('Concert id just created: ', concert_id)
@@ -348,22 +380,25 @@ app.get('/user/:id', async function(request, response){
 
 // Registers a user
 app.post('/user', async function(request, response){
-  const { login_name, password, first_name, last_name, position } = request.body;
+  const { login_name, password, first_name, last_name, position, user_id, profile_image_url } = request.body;
 
   if (login_name.length === 0 || first_name.length === 0 || password.length === 0){
     response.status(400).send("Empty fields not allowed!");
     return;
   }
 
-  const datastore_response = await register_user(login_name, password, first_name, last_name, position)
+  let datastore_response;
+  if (user_id) {
+    datastore_response = await update_user(login_name, password, first_name, last_name, position, profile_image_url, user_id)
+  } else {
+    datastore_response = await register_user(login_name, password, first_name, last_name, position)
+  }
   if (datastore_response === "ERROR"){
     response.status(403).send("User already exists!");
     return;
   }
-
   response.end("Successfully added user " + datastore_response + " to database!")
 });
-
 
 
 /*

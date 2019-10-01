@@ -26,7 +26,6 @@ class HomePage extends React.Component {
         const domForm = new FormData();
         domForm.append('file', files[0]);
 
-
         axios.post("/upload", domForm)
           .then((val) => {
             const public_filename = val.data
@@ -34,11 +33,26 @@ class HomePage extends React.Component {
             var user = {...this.state.user}
             user.profile_image_url = public_filename
             this.setState({ user, dropzone_open: false });
+            console.log('Calling updateUser')
+            this.updateUser(user);
+            console.log('Called updateUser')
           })
           .catch((err) => {
             console.log(err, err.message);
             alert("Error with file upload...please try again later!");
           });
+    }
+
+    this.updateUser = (new_user) => {
+      console.log('Updating user ', new_user)
+      axios.post("/user", new_user)
+        .then((val) => {
+          console.log(val);
+        })
+        .catch((err) => {
+          console.log(err, err.message);
+          alert('Error updating user in database!')
+        });
     }
   }
 
