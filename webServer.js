@@ -35,13 +35,13 @@ var async = require('async');
 var fs = require("fs");
 
 var cookieSession = require('cookie-session');
+const { format } = require('util');
 var session = require('express-session');
 var bodyParser = require('body-parser');
-var multer = require('multer');
+var Multer = require('multer');
 const crypto = require('crypto');
-var processFormBody = multer({storage: multer.memoryStorage()}).single('uploadedfile');
 
-/******************************** Google Cloud Datastore config ********************************/
+/******************************** Google Cloud configs ********************************/
 // By default, the client will authenticate using the service account file
 // specified by the GOOGLE_APPLICATION_CREDENTIALS environment variable and use
 // the project specified by the GOOGLE_CLOUD_PROJECT environment variable. See
@@ -51,7 +51,33 @@ const {Datastore} = require('@google-cloud/datastore');
 
 // Instantiate a datastore client [new Datastore({ projectId: 'wrkspace' })]
 const datastore = new Datastore();
-/******************************** Google Cloud Datastore config ********************************/
+
+
+// By default, the client will authenticate using the service account file
+// specified by the GOOGLE_APPLICATION_CREDENTIALS environment variable and use
+// the project specified by the GOOGLE_CLOUD_PROJECT environment variable. See
+// https://github.com/GoogleCloudPlatform/google-cloud-node/blob/master/docs/authentication.md
+// These environment variables are set automatically on Google App Engine
+const {Storage} = require('@google-cloud/storage');
+
+// Instantiate a storage client
+const storage = new Storage();
+
+// Multer is required to process file uploads and make them available via
+// req.files.
+const filesize_limit_mb = 20;
+const multer = Multer({
+  storage: Multer.memoryStorage(),
+  limits: {
+    fileSize: filesize_limit_mb * 1024 * 1024, // no larger than 20mb, you can change as needed.
+  },
+});
+
+// A bucket is a container for objects (files).
+// Name should be "GCLOUD_STORAGE_BUCKET=wkrspace_file_bucket"
+const bucket = storage.bucket(process.env.GCLOUD_STORAGE_BUCKET);
+
+/******************************** Google Cloud configs ********************************/
 
 var express = require('express');
 var app = express();
@@ -124,6 +150,38 @@ const get_user_by_property = async (property_name, property_value) => {
   const [first_user] = await datastore.runQuery(query);
   return first_user
 }
+
+const update_user = async (login_name, hashed_password, first_name, last_name, position, profile_image_url, user_id) => {
+  console.log('Updating user: ', user_id)
+  const user_key = datastore.key(['User', user_id]);
+
+  const user = {
+    'user_id': user_id,
+    'login_name': login_name,
+    'password': hashed_password,
+    'first_name': first_name,
+    'last_name': last_name,
+    'position': position,
+    'profile_image_url': profile_image_url
+  }
+
+  const entity = {
+    key: user_key,
+    data: user,
+  };
+
+
+  // Attempt to insert the user into the databse
+  let res;
+  try {
+    res = await datastore.upsert(entity)
+    console.log(`Saved user ${user_id}`);
+    return user_id
+  } catch (error) {
+    console.error('ERROR SAVING USER:', error);
+    return "ERROR"
+  }
+};
 
 const create_concert = async (type, viewable_by, name, date, venue, cosponsors, owners, artists, guarantee) => {
   const concert_id = hash_string(name + type)
@@ -322,22 +380,25 @@ app.get('/user/:id', async function(request, response){
 
 // Registers a user
 app.post('/user', async function(request, response){
-  const { login_name, password, first_name, last_name, position } = request.body;
+  const { login_name, password, first_name, last_name, position, user_id, profile_image_url } = request.body;
 
   if (login_name.length === 0 || first_name.length === 0 || password.length === 0){
     response.status(400).send("Empty fields not allowed!");
     return;
   }
 
-  const datastore_response = await register_user(login_name, password, first_name, last_name, position)
+  let datastore_response;
+  if (user_id) {
+    datastore_response = await update_user(login_name, password, first_name, last_name, position, profile_image_url, user_id)
+  } else {
+    datastore_response = await register_user(login_name, password, first_name, last_name, position)
+  }
   if (datastore_response === "ERROR"){
     response.status(403).send("User already exists!");
     return;
   }
-
   response.end("Successfully added user " + datastore_response + " to database!")
 });
-
 
 
 /*
@@ -409,6 +470,38 @@ app.get('/concert/:id', async function(request, response){
 
   console.log(`Retrieved concert ${concert_id}`)
   response.end(JSON.stringify(concerts[0]));
+});
+
+// Uploads a file to the Google Cloud Datastore Bucket
+// Process the file upload and upload to Google Cloud Storage.
+app.post('/upload', multer.single('file'), (req, res, next) => {
+
+  if (!req.file) {
+    res.status(400).send('No file uploaded.');
+    return;
+  }
+
+  console.log('Uploading file', req.file.originalname);
+
+  // Create a new blob in the bucket and upload the file data.
+  const blob = bucket.file(req.file.originalname);
+  const blobStream = blob.createWriteStream({
+    resumable: false,
+  });
+
+  blobStream.on('error', err => {
+    next(err);
+  });
+
+  blobStream.on('finish', () => {
+    // The public URL can be used to directly access the file via HTTP.
+    const publicUrl = format(
+      `https://storage.googleapis.com/${bucket.name}/${blob.name}`
+    );
+    res.status(200).send(publicUrl);
+  });
+
+  blobStream.end(req.file.buffer);
 });
 
 /*
